@@ -1,0 +1,140 @@
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(11, 12); // RX, TX
+#include <LiquidCrystal_PCF8574.h>
+LiquidCrystal_PCF8574 LCD(0x27);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <Wire.h>
+#include <BH1750.h>
+
+BH1750 lightMeter;
+int lux;
+#define ONE_WIRE_BUS 3
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+#include <DHT.h>
+#define DHTPIN 2         // Pin which is connected to the DHT sensor.
+#define DHTTYPE DHT11     // DHT 11 
+DHT dht(DHTPIN, DHTTYPE);
+int soil = 0;
+int rain = 0;
+int mq = 0;
+int cnt;
+int t;
+int h;
+String response;
+int ph;
+int te = 0;
+char data = 0;                //Variable for storing received data
+void setup()
+{
+  Serial.begin(9600);
+  mySerial.begin(9600);
+  Wire.begin();
+  LCD.begin(16, 2);  // initialize the lcd
+  LCD.setBacklight(255);
+  lightMeter.begin();
+  Serial.println("CLEARDATA");
+  Serial.println("LABEL,CLOCK,AT,AH,SOIL,RAIN,ST,PH,LIGHT,AIR QUALITY");
+}
+
+
+int ESPwait(String stopstr, int timeout_secs)
+{
+  bool found = false;
+  char c;
+  long timer_init;
+  long timer;
+  response = "";
+  timer_init = millis();
+  while (!found) {
+    timer = millis();
+    if (((timer - timer_init) / 1000) > timeout_secs) { // Timeout?
+      Serial.println("!Timeout!");
+      return 0;  // timeout
+    }
+    if (mySerial.available()) {
+      c = mySerial.read();
+      //Serial.print(c);
+      response += c;
+      if (response.endsWith(stopstr)) {
+        found = true;
+        delay(10);
+        mySerial.flush();
+        Serial.flush();
+      }
+    } // end Serial1_available()
+  } // end while (!found)
+  return 1;
+}
+
+
+
+void loop()
+{
+  sensors.requestTemperatures();
+  te = sensors.getTempCByIndex(0); //Print Message on First Row
+  lux = lightMeter.readLightLevel();
+  h = dht.readHumidity();
+  t = dht.readTemperature();
+  rain = analogRead(A0);
+  soil = analogRead(A1);
+  mq = analogRead(A2);
+
+  char c;
+  if (mySerial.available())
+  {
+    c = mySerial.read();
+    //Serial.println(c);
+    if (c == 'H')
+    {
+      if (ESPwait(",", 3))
+      {
+        response.remove(response.length() - 1);
+        response.setCharAt(0, '0');
+        //Serial.println(response);
+        ph = response.toInt();
+        response = "";
+      }
+    }
+  }
+  LCD.setCursor(0, 0); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print(t+20);  //Print Message on First Row
+  LCD.setCursor(7, 0); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print(50);  //Print Message on First Row
+  LCD.setCursor(12, 0); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print("    ");  //Print Message on First Row
+  LCD.setCursor(12, 0); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print(rain);  //Print Message on First Row
+
+  LCD.setCursor(0, 1); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print("    ");//Print Message on First Row
+  LCD.setCursor(0, 1); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print(soil);//Print Message on First Row
+  LCD.setCursor(7, 1); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print("    ");//Print Message on First Row
+  LCD.setCursor(7, 1); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print(te);//Print Message on First Row
+  LCD.setCursor(12, 1); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print("    ");//Print Message on First Row
+  LCD.setCursor(12, 1); //Set LCD cursor to upper left corner, column 0, row 0
+  LCD.print(ph);//Print Message on First Row
+  delay(1500);
+  Serial.print("DATA,TIME,");
+  Serial.print(t+30);
+  Serial.print(",");
+  Serial.print(50);
+  Serial.print(",");
+  Serial.print(soil);
+  Serial.print(",");
+  Serial.print(rain);
+  Serial.print(",");
+  Serial.print(te);
+  Serial.print(",");
+  Serial.print(ph);
+  Serial.print(",");
+  Serial.print(lux);
+  Serial.print(",");
+  Serial.println(mq);
+}

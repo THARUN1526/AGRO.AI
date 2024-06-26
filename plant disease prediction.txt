@@ -1,0 +1,106 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QFileDialog, QVBoxLayout, QWidget
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input, decode_predictions
+import numpy as np
+
+class CropDiseaseApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle('Crop Disease Prediction and Remedy')
+        self.setGeometry(100, 100, 800, 600)
+
+        # Set solid light green background color
+        self.setStyleSheet("background-color: lightgreen;")
+
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+
+        # Add title label with dark green border
+        self.title_label = QLabel('AGRO.AI', self)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setStyleSheet("color: black; font-size: 24px; font-weight: bold; border: 2px solid darkgreen;")
+
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+
+        # Add dark green borders to prediction and remedy labels
+        self.prediction_label = QLabel('Prediction:', self)
+        self.prediction_label.setStyleSheet("font-size: 20px; font-weight: bold; color: white; border: 2px solid darkgreen;")
+
+        self.remady_label = QLabel('Remedy:', self)
+        self.remady_label.setStyleSheet("font-size: 20px; font-weight: bold; color: white; border: 2px solid darkgreen;")
+
+        load_button = QPushButton('Load Image', self)
+        load_button.clicked.connect(self.load_image)
+
+        layout = QVBoxLayout(self.central_widget)
+        layout.addWidget(self.title_label)
+        layout.addWidget(self.image_label, 1)
+        layout.addWidget(self.prediction_label)
+        layout.addWidget(self.remady_label)
+        layout.addWidget(load_button)
+
+        self.model = MobileNetV2(weights='imagenet')
+
+    def load_image(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_name, _ = QFileDialog.getOpenFileName(self, 'Open Image', '', 'Image Files (.png *.jpg *.jpeg *.bmp *.gif);;All Files ()', options=options)
+        
+        if file_name:
+            self.predict_crop_disease(file_name)
+            self.display_image(file_name)
+
+    def predict_crop_disease(self, image_path):
+        img = image.load_img(image_path, target_size=(224, 224))
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = preprocess_input(img_array)
+
+        predictions = self.model.predict(img_array)
+        decoded_predictions = decode_predictions(predictions, top=1)[0][0]
+
+        self.update_labels(decoded_predictions)
+
+    def update_labels(self, result):
+        prediction_text = f'Prediction: {result[1]} ({result[2]*100:.2f}%)'
+        remedy_text = self.get_remedy(result[1])
+
+        self.prediction_label.setText(prediction_text)
+        self.remady_label.setText(f'Remedy: {remedy_text}')
+
+    def get_remedy(self, disease_name):
+        # Replace this with your actual remedies
+        remedies = {
+            'bacterial_spot': 'Apply copper-based fungicides.',
+            'early_blight': 'Remove infected leaves and apply fungicides.',
+            'healthy': 'No action required. The plant is healthy.',
+            'head_cabbage': 'Seed treatment with antagonist fungal culture of Trichoderma viride.',
+            'acorn': 'Removal of fallen acorns from the grazing area .',
+            'buckeye': 'Fungicide sprays with chlorothalonil, mancozeb, or copper fungicides.',
+            'ear': 'Avoid overcrowding the plants.',
+            'stole': 'Remove diseased leaves, flowers, and fruit as soon as they are noticed.',
+            'buckeye': 'Fungicide sprays with chlorothalonil, mancozeb, or copper fungicides.',
+            # Add more diseases and corresponding remedies as needed
+        }
+        return remedies.get(disease_name, 'Remedy not available.')
+
+    def display_image(self, image_path):
+        pixmap = QPixmap(image_path)
+        self.image_label.setPixmap(pixmap.scaledToWidth(self.image_label.width()))
+
+def main():
+    app = QApplication(sys.argv)
+    window = CropDiseaseApp()
+    window.show()
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,43 @@
+int rain = 2;
+int moisture = A0;
+int depth = A1;
+int relay1 = 3;
+int relay2 = 8;
+int rain_data,depth_data,moisture_data;
+void setup() {
+  Serial.begin(9600);
+  pinMode(rain,INPUT);
+  pinMode(moisture,INPUT);
+  pinMode(depth,INPUT);
+  pinMode(relay1,OUTPUT);
+  pinMode(relay2,OUTPUT);
+
+  
+  // put your setup code here, to run once:
+
+}
+
+void loop() {
+  rain_data = digitalRead(rain);
+  moisture_data = analogRead(moisture);
+  depth_data = analogRead(depth);
+  Serial.println(moisture_data);
+  Serial.println(depth_data);
+  Serial.println(rain_data);
+  Serial.println("________");
+  if(depth_data>670){
+    digitalWrite(relay1,LOW);
+  }
+  else{
+    digitalWrite(relay1,HIGH);
+  }
+  if (moisture_data>=1000 and rain_data==1 and depth_data<=670){
+    digitalWrite(relay2,LOW);
+  }
+  else{
+    digitalWrite(relay2,HIGH);
+  }
+  delay(500);
+  // put your main code here, to run repeatedly:
+
+}
